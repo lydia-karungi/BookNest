@@ -161,14 +161,15 @@ fun LibraryScreen(
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = "LK",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp
-                                    ),
-                                    color = Color.White
+                                Image(
+                                    painter = painterResource(id = R.drawable.your_profile_photo), // Replace with your image file name
+                                    contentDescription = "Profile Picture",
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
                                 )
+
                             }
                         }
                     }
