@@ -12,15 +12,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,14 +40,16 @@ data class Book(
     val coverColor: Color,
     val pageCount: Int,
     val readDate: String,
-    val coverImageRes: Int? = null // Add this for image resource
+    val coverImageRes: Int? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryScreen() {
+fun LibraryScreen(
+    onAddBookClick: () -> Unit = {}
+) {
     val books = listOf(
-        Book("The Midnight Library", "Matt Haig", "Reading", 0.65f, 4.8f, "Fiction", Color.Black, 288, "2024-01-15", R.drawable.midnight_library_cover), // Set to null for now
+        Book("The Midnight Library", "Matt Haig", "Reading", 0.65f, 4.8f, "Fiction", Color.Black, 288, "2024-01-15", R.drawable.midnight_library_cover),
         Book("Educated", "Tara Westover", "Finished", 1.0f, 4.9f, "Memoir", Color.Black, 334, "2024-01-10", R.drawable.educated),
         Book("Where the Crawdads Sing", "Delia Owens", "Reading", 0.35f, 4.6f, "Fiction", Color.Black, 368, "2024-01-12", R.drawable.where_the_crwadads_sing),
         Book("Klara and the Sun", "Kazuo Ishiguro", "Unread", 0.0f, 4.5f, "Fiction", Color.Black, 303, "", R.drawable.klara_and_the_sun),
@@ -56,188 +57,330 @@ fun LibraryScreen() {
     )
 
     val categories = listOf("All", "Reading", "Finished", "Wishlist")
-    val readingStats = "3 books • 67% avg progress"
+    var selectedCategory by remember { mutableStateOf("All") }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-    ) {
-        // Modern Header with Glass Effect
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color.White,
-            shadowElevation = 0.dp
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onAddBookClick,
+                containerColor = Color(0xFF6366F1),
+                contentColor = Color.White,
+                modifier = Modifier.size(56.dp)
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Add Book",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFFF8FAFC),
+                            Color.White
+                        )
+                    )
+                )
+                .padding(paddingValues),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            Column {
-                // Top Section
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            // Modern Header
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column {
-                        Text(
-                            text = "BookNest",
-                            style = MaterialTheme.typography.headlineLarge.copy(
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 32.sp
-                            ),
-                            color = Color.Black
-                        )
-                        Text(
-                            text = readingStats,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Black.copy(alpha = 0.6f)
-                        )
-                    }
+                    // Status bar space
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                    // Profile Avatar
-                    Box(
+                    // Top header with greeting
+                    Row(
                         modifier = Modifier
-                            .size(48.dp)
-                            .background(
-                                Color(0xFFFFBBE7),
-                                CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "LK",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = Color.White
-                        )
-                    }
-                }
+                        Column {
+                            Text(
+                                text = "Good morning! ☀️",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color(0xFF64748B),
+                                fontSize = 16.sp
+                            )
+                            Text(
+                                text = "BookNest",
+                                style = MaterialTheme.typography.headlineLarge.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 28.sp
+                                ),
+                                color = Color(0xFF1E293B)
+                            )
+                        }
 
-                // Enhanced Search Bar
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Surface(
-                        modifier = Modifier.weight(1f),
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Notification icon
+                            Surface(
+                                modifier = Modifier.size(44.dp),
+                                shape = CircleShape,
+                                color = Color.White,
+                                shadowElevation = 2.dp
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.Notifications,
+                                        contentDescription = "Notifications",
+                                        tint = Color(0xFF64748B),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+
+                            // Profile Avatar with gradient
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .background(
+                                        Brush.linearGradient(
+                                            colors = listOf(
+                                                Color(0xFF6366F1),
+                                                Color(0xFF8B5CF6)
+                                            )
+                                        ),
+                                        CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "LK",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp
+                                    ),
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+
+                    // Reading Stats Card
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp),
                         shape = RoundedCornerShape(16.dp),
-                        color = Color.Black.copy(alpha = 0.04f)
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                                .padding(20.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Column {
+                                Text(
+                                    text = "Reading Progress",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color(0xFF64748B),
+                                    fontSize = 14.sp
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "3 books",
+                                    style = MaterialTheme.typography.headlineSmall.copy(
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = Color(0xFF1E293B)
+                                )
+                                Text(
+                                    text = "67% avg progress",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color(0xFF64748B)
+                                )
+                            }
+
+                            // Circular progress indicator
+                            Box(contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(
+                                    progress = { 0.67f },
+                                    modifier = Modifier.size(60.dp),
+                                    color = Color(0xFF6366F1),
+                                    strokeWidth = 6.dp,
+                                    trackColor = Color(0xFFE2E8F0)
+                                )
+                                Text(
+                                    text = "67%",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = Color(0xFF1E293B),
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+
+                    // Search Bar
+                    OutlinedTextField(
+                        value = "",
+                        onValueChange = { },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        placeholder = {
+                            Text(
+                                "Search your library...",
+                                color = Color(0xFF94A3B8)
+                            )
+                        },
+                        leadingIcon = {
                             Icon(
                                 Icons.Default.Search,
                                 contentDescription = null,
-                                tint = Color.Black.copy(alpha = 0.4f),
+                                tint = Color(0xFF94A3B8),
                                 modifier = Modifier.size(20.dp)
                             )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = "Search your library...",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = Color.Black.copy(alpha = 0.4f)
-                            )
-                        }
-                    }
-
-                    // Filter Button
-                    Surface(
-                        modifier = Modifier.size(48.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color(0xFFFFBBE7)
-                    ) {
-                        Box(
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Default.MoreVert,
-                                contentDescription = "Filter",
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
-
-                // Modern Category Pills
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp)
-                ) {
-                    items(categories.size) { index ->
-                        ModernCategoryPill(
-                            category = categories[index],
-                            isSelected = index == 0
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { }) {
+                                Icon(
+                                    Icons.Default.MoreVert,
+                                    contentDescription = "Filter",
+                                    tint = Color(0xFF6366F1),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = Color(0xFFE2E8F0),
+                            focusedBorderColor = Color(0xFF6366F1),
+                            unfocusedContainerColor = Color.White,
+                            focusedContainerColor = Color.White
                         )
+                    )
+
+                    // Category Pills
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
+                    ) {
+                        items(categories) { category ->
+                            ModernCategoryPill(
+                                category = category,
+                                isSelected = selectedCategory == category,
+                                onClick = { selectedCategory = category }
+                            )
+                        }
                     }
+
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
-        }
 
-        // Books List with Modern Cards
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)
-        ) {
+            // Books Section Header
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Your Library",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = Color(0xFF1E293B)
+                    )
+                    Text(
+                        text = "${books.size} books",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF64748B)
+                    )
+                }
+            }
+
+            // Books List
             items(books) { book ->
-                ModernBookCard(book = book)
+                ModernBookCard(
+                    book = book,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+                )
+            }
+
+            // Bottom spacing for FAB
+            item {
+                Spacer(modifier = Modifier.height(80.dp))
             }
         }
     }
 }
 
 @Composable
-fun ModernCategoryPill(category: String, isSelected: Boolean) {
+fun ModernCategoryPill(
+    category: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
     Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = if (isSelected) Color.Black else Color.Transparent,
+        onClick = onClick,
+        shape = RoundedCornerShape(25.dp),
+        color = if (isSelected) Color(0xFF6366F1) else Color.White,
         border = if (!isSelected) androidx.compose.foundation.BorderStroke(
             1.dp,
-            Color.Black.copy(alpha = 0.1f)
-        ) else null
+            Color(0xFFE2E8F0)
+        ) else null,
+        shadowElevation = if (isSelected) 4.dp else 0.dp
     ) {
         Text(
             text = category,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
             style = MaterialTheme.typography.bodyMedium.copy(
-                fontWeight = FontWeight.Medium
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
             ),
-            color = if (isSelected) Color.White else Color.Black.copy(alpha = 0.7f)
+            color = if (isSelected) Color.White else Color(0xFF64748B)
         )
     }
 }
 
 @Composable
-fun ModernBookCard(book: Book) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = Color.Black.copy(alpha = 0.02f),
-        shadowElevation = 0.dp
+fun ModernBookCard(book: Book, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.Top
         ) {
             // Enhanced Book Cover
-            Surface(
+            Card(
                 modifier = Modifier
                     .width(60.dp)
                     .height(80.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = Color.Black
+                shape = RoundedCornerShape(8.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 if (book.coverImageRes != null) {
-                    // Use real book cover image
                     Image(
                         painter = painterResource(id = book.coverImageRes),
                         contentDescription = "Cover of ${book.title}",
@@ -245,34 +388,30 @@ fun ModernBookCard(book: Book) {
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    // Fallback to text-based cover
-                    Column(
+                    Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(8.dp),
-                        verticalArrangement = Arrangement.SpaceBetween,
-                        horizontalAlignment = Alignment.Start
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color(0xFF6366F1),
+                                        Color(0xFF8B5CF6)
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = book.title.split(" ").take(2).joinToString("\n"),
+                            text = book.title.take(2).uppercase(),
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 9.sp,
-                            lineHeight = 11.sp,
-                            maxLines = 3
-                        )
-
-                        Text(
-                            text = book.author.split(" ").last().uppercase(),
-                            color = Color.White.copy(alpha = 0.7f),
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 7.sp
+                            fontSize = 16.sp
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.width(20.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
             // Book Information
             Column(
@@ -280,49 +419,76 @@ fun ModernBookCard(book: Book) {
             ) {
                 Text(
                     text = book.title,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
                     ),
-                    color = Color.Black,
+                    color = Color(0xFF1E293B),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
 
                 Text(
                     text = "by ${book.author}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.Black.copy(alpha = 0.6f),
-                    modifier = Modifier.padding(top = 4.dp)
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF64748B),
+                    modifier = Modifier.padding(top = 2.dp)
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Status Badge
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = when (book.status) {
-                        "Reading" -> Color(0xFFFFBBE7).copy(alpha = 0.2f)
-                        "Finished" -> Color.Black.copy(alpha = 0.08f)
-                        else -> Color.Black.copy(alpha = 0.04f)
-                    }
+                // Status and Progress
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = book.status.uppercase(),
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp
-                        ),
+                    // Status Badge
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
                         color = when (book.status) {
-                            "Reading" -> Color(0xFFFFBBE7)
-                            else -> Color.Black.copy(alpha = 0.7f)
+                            "Reading" -> Color(0xFF6366F1).copy(alpha = 0.1f)
+                            "Finished" -> Color(0xFF10B981).copy(alpha = 0.1f)
+                            else -> Color(0xFF64748B).copy(alpha = 0.1f)
                         }
-                    )
+                    ) {
+                        Text(
+                            text = book.status.uppercase(),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp
+                            ),
+                            color = when (book.status) {
+                                "Reading" -> Color(0xFF6366F1)
+                                "Finished" -> Color(0xFF10B981)
+                                else -> Color(0xFF64748B)
+                            }
+                        )
+                    }
+
+                    // Rating
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Star,
+                            contentDescription = null,
+                            tint = Color(0xFFFBBF24),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = book.rating.toString(),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = Color(0xFF1E293B)
+                        )
+                    }
                 }
 
                 if (book.status == "Reading") {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     // Progress Section
                     Column {
@@ -332,17 +498,15 @@ fun ModernBookCard(book: Book) {
                         ) {
                             Text(
                                 text = "Progress",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontWeight = FontWeight.Medium
-                                ),
-                                color = Color.Black.copy(alpha = 0.6f)
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF64748B)
                             )
                             Text(
                                 text = "${(book.progress * 100).toInt()}%",
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     fontWeight = FontWeight.Bold
                                 ),
-                                color = Color.Black
+                                color = Color(0xFF1E293B)
                             )
                         }
 
@@ -354,48 +518,10 @@ fun ModernBookCard(book: Book) {
                                 .fillMaxWidth()
                                 .height(6.dp)
                                 .clip(RoundedCornerShape(3.dp)),
-                            color = Color(0xFFFFBBE7),
-                            trackColor = Color.Black.copy(alpha = 0.08f)
+                            color = Color(0xFF6366F1),
+                            trackColor = Color(0xFFE2E8F0)
                         )
                     }
-                }
-            }
-
-            // Rating and Menu
-            Column(
-                horizontalAlignment = Alignment.End
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Star,
-                        contentDescription = null,
-                        tint = Color(0xFFFFBBE7),
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = book.rating.toString(),
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = Color.Black
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                IconButton(
-                    onClick = { /* TODO */ },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        Icons.Default.MoreVert,
-                        contentDescription = "More options",
-                        tint = Color.Black.copy(alpha = 0.4f),
-                        modifier = Modifier.size(18.dp)
-                    )
                 }
             }
         }

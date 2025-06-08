@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
@@ -20,13 +21,18 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.booknest.screens.AddBookScreen
+import com.example.booknest.screens.AddLogScreen
+import com.example.booknest.screens.GoalsScreen
 import com.example.booknest.screens.LibraryScreen
+import com.example.booknest.screens.AddLogScreen
 
 sealed class BottomNavItem(val route: String, val label: String, val icon: ImageVector) {
     object Library : BottomNavItem("library", "Library", Icons.Filled.Home)
     object Goals : BottomNavItem("goals", "Goals", Icons.Filled.Star)
     object Stats : BottomNavItem("stats", "Stats", Icons.Filled.Info)
     object Store : BottomNavItem("store", "Store", Icons.Filled.Search)
+    object AddBook : BottomNavItem("addBook", "Add Book", Icons.Filled.Add)
 }
 
 @Composable
@@ -44,35 +50,39 @@ fun MainNavigation() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(BottomNavItem.Library.route) {
-                com.example.booknest.screens.LibraryScreen()
+                LibraryScreen(
+                    onAddBookClick = {
+                        navController.navigate(BottomNavItem.AddBook.route)
+                    }
+                )
             }
             composable(BottomNavItem.Goals.route) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Goals Coming Soon", style = MaterialTheme.typography.headlineMedium)
-                }
+                GoalsScreen(
+                    onAddLogClick = {
+                        navController.navigate("quoteLog")
+                    }
+                )
+            }
+            composable("quoteLog") {
+                AddLogScreen()
             }
             composable(BottomNavItem.Stats.route) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("Stats Coming Soon", style = MaterialTheme.typography.headlineMedium)
                 }
             }
             composable(BottomNavItem.Store.route) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("Store Coming Soon", style = MaterialTheme.typography.headlineMedium)
                 }
+            }
+            composable(BottomNavItem.AddBook.route) {
+                AddBookScreen() // Implement this separately
             }
         }
     }
 }
+
 
 @Composable
 fun BottomNavigationBar(navController: NavHostController) {
@@ -92,7 +102,7 @@ fun BottomNavigationBar(navController: NavHostController) {
                 selected = currentRoute == item.route,
                 onClick = {
                     navController.navigate(item.route) {
-                        popUpTo(navController.graph.startDestinationId) { saveState = true }
+                        popUpTo(0)
                         launchSingleTop = true
                         restoreState = true
                     }
