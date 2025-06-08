@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.booknest.R
 
 data class Book(
     val title: String,
@@ -47,11 +48,11 @@ data class Book(
 @Composable
 fun LibraryScreen() {
     val books = listOf(
-        Book("The Midnight Library", "Matt Haig", "Reading", 0.65f, 4.8f, "Fiction", Color.Black, 288, "2024-01-15", null), // Set to null for now
-        Book("Educated", "Tara Westover", "Finished", 1.0f, 4.9f, "Memoir", Color.Black, 334, "2024-01-10"),
-        Book("Where the Crawdads Sing", "Delia Owens", "Reading", 0.35f, 4.6f, "Fiction", Color.Black, 368, "2024-01-12"),
-        Book("Klara and the Sun", "Kazuo Ishiguro", "Unread", 0.0f, 4.5f, "Fiction", Color.Black, 303, ""),
-        Book("The Seven Husbands of Evelyn Hugo", "Taylor Jenkins Reid", "Finished", 1.0f, 4.7f, "Romance", Color.Black, 400, "2024-01-08")
+        Book("The Midnight Library", "Matt Haig", "Reading", 0.65f, 4.8f, "Fiction", Color.Black, 288, "2024-01-15", R.drawable.midnight_library_cover), // Set to null for now
+        Book("Educated", "Tara Westover", "Finished", 1.0f, 4.9f, "Memoir", Color.Black, 334, "2024-01-10", R.drawable.educated),
+        Book("Where the Crawdads Sing", "Delia Owens", "Reading", 0.35f, 4.6f, "Fiction", Color.Black, 368, "2024-01-12", R.drawable.where_the_crwadads_sing),
+        Book("Klara and the Sun", "Kazuo Ishiguro", "Unread", 0.0f, 4.5f, "Fiction", Color.Black, 303, "", R.drawable.klara_and_the_sun),
+        Book("The Seven Husbands of Evelyn Hugo", "Taylor Jenkins Reid", "Finished", 1.0f, 4.7f, "Romance", Color.Black, 400, "2024-01-08", R.drawable.the_seven_husbands)
     )
 
     val categories = listOf("All", "Reading", "Finished", "Wishlist")
