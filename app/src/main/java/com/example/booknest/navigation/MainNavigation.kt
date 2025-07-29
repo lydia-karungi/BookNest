@@ -1,6 +1,7 @@
 package com.example.booknest.navigation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -25,6 +26,8 @@ import com.example.booknest.screens.AddBookScreen
 import com.example.booknest.screens.AddLogScreen
 import com.example.booknest.screens.GoalsScreen
 import com.example.booknest.screens.LibraryScreen
+import com.example.booknest.screens.BookSearchScreen
+import com.example.booknest.data.entity.Book
 
 sealed class BottomNavItem(val route: String, val label: String, val icon: ImageVector) {
     object Library : BottomNavItem("library", "Library", Icons.Filled.Home)
@@ -63,6 +66,10 @@ fun MainNavigation() {
                         // Navigate to edit book screen
                         // You can pass book data through navigation arguments or use a shared state
                         navController.navigate(Routes.EDIT_BOOK)
+                    },
+                    onSearchClick = {
+                        // Navigate to Store tab for online book search
+                        navController.navigate(BottomNavItem.Store.route)
                     }
                 )
             }
@@ -95,9 +102,7 @@ fun MainNavigation() {
             }
 
             composable(BottomNavItem.Store.route) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Store Coming Soon", style = MaterialTheme.typography.headlineMedium)
-                }
+                BookSearchScreen()
             }
 
             composable(BottomNavItem.AddBook.route) {

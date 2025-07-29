@@ -1,6 +1,5 @@
 package com.example.booknest.screens
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,10 +11,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,44 +21,63 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.booknest.R
-
-data class Book(
-    val title: String,
-    val author: String,
-    val status: String,
-    val progress: Float,
-    val rating: Float,
-    val category: String,
-    val coverColor: Color,
-    val pageCount: Int,
-    val readDate: String,
-    val coverImageRes: Int? = null
-)
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.example.booknest.data.database.BookNestDatabase
+import com.example.booknest.data.entity.Book
+import com.example.booknest.data.repository.BookRepository
+import com.example.booknest.data.network.NetworkModule
+import com.example.booknest.viewmodel.LibraryViewModel
+import com.example.booknest.viewmodel.ViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
     onAddBookClick: () -> Unit = {},
-    onEditBookClick: (Book) -> Unit = {}
+    onEditBookClick: (Book) -> Unit = {},
+    onSearchClick: () -> Unit = {} // This will navigate to Store tab
 ) {
-    val books = listOf(
-        Book("The Midnight Library", "Matt Haig", "Reading", 0.65f, 4.8f, "Fiction", Color.Black, 288, "2024-01-15", R.drawable.midnight_library_cover),
-        Book("Educated", "Tara Westover", "Finished", 1.0f, 4.9f, "Memoir", Color.Black, 334, "2024-01-10", R.drawable.educated),
-        Book("Where the Crawdads Sing", "Delia Owens", "Reading", 0.35f, 4.6f, "Fiction", Color.Black, 368, "2024-01-12", R.drawable.where_the_crwadads_sing),
-        Book("Klara and the Sun", "Kazuo Ishiguro", "Unread", 0.0f, 4.5f, "Fiction", Color.Black, 303, "", R.drawable.klara_and_the_sun),
-        Book("The Seven Husbands of Evelyn Hugo", "Taylor Jenkins Reid", "Finished", 1.0f, 4.7f, "Romance", Color.Black, 400, "2024-01-08", R.drawable.the_seven_husbands)
+    // Get database instance and create repository
+    val context = LocalContext.current
+    val database = remember { BookNestDatabase.getDatabase(context) }
+
+    val repository = remember {
+        BookRepository(database.bookDao(), database.readingLogDao(), NetworkModule.bookApiService)
+    }
+
+    // Create ViewModel using factory
+    val viewModel: LibraryViewModel = viewModel(
+        factory = ViewModelFactory(repository)
     )
+
+    // Collect books from ViewModel
+    val allBooks by viewModel.books.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
     val categories = listOf("All", "Reading", "Finished", "Wishlist")
     var selectedCategory by remember { mutableStateOf("All") }
+    var searchQuery by remember { mutableStateOf("") }
+
+    // Filter books based on search query and category
+    val filteredBooks = remember(allBooks, searchQuery, selectedCategory) {
+        allBooks.filter { book ->
+            val matchesSearch = searchQuery.isEmpty() ||
+                    book.title.contains(searchQuery, ignoreCase = true) ||
+                    book.author.contains(searchQuery, ignoreCase = true)
+
+            val matchesCategory = selectedCategory == "All" || book.status == selectedCategory
+
+            matchesSearch && matchesCategory
+        }
+    }
 
     Scaffold(
         floatingActionButton = {
@@ -129,6 +146,24 @@ fun LibraryScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            // Find Books Online Button - Navigate to Store
+                            Surface(
+                                onClick = onSearchClick,
+                                modifier = Modifier.size(44.dp),
+                                shape = CircleShape,
+                                color = Color(0xFF6366F1),
+                                shadowElevation = 2.dp
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.Search,
+                                        contentDescription = "Find Books Online",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+
                             // Notification icon
                             Surface(
                                 modifier = Modifier.size(44.dp),
@@ -146,7 +181,7 @@ fun LibraryScreen(
                                 }
                             }
 
-                            // Profile Avatar with gradient
+                            // Profile Avatar with gradient - simplified
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)
@@ -161,15 +196,12 @@ fun LibraryScreen(
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Image(
-                                    painter = painterResource(id = R.drawable.your_profile_photo), // Replace with your image file name
-                                    contentDescription = "Profile Picture",
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .clip(CircleShape),
-                                    contentScale = ContentScale.Crop
+                                Text(
+                                    text = "BN",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp
                                 )
-
                             }
                         }
                     }
@@ -201,14 +233,17 @@ fun LibraryScreen(
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "3 books",
+                                    text = "${allBooks.size} books",
                                     style = MaterialTheme.typography.headlineSmall.copy(
                                         fontWeight = FontWeight.Bold
                                     ),
                                     color = Color(0xFF1E293B)
                                 )
+                                val avgProgress = if (allBooks.isNotEmpty()) {
+                                    (allBooks.sumOf { it.progress.toDouble() } / allBooks.size * 100).toInt()
+                                } else 0
                                 Text(
-                                    text = "67% avg progress",
+                                    text = "$avgProgress% avg progress",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color(0xFF64748B)
                                 )
@@ -216,15 +251,18 @@ fun LibraryScreen(
 
                             // Circular progress indicator
                             Box(contentAlignment = Alignment.Center) {
+                                val progress = if (allBooks.isNotEmpty()) {
+                                    (allBooks.sumOf { it.progress.toDouble() } / allBooks.size).toFloat()
+                                } else 0f
                                 CircularProgressIndicator(
-                                    progress = { 0.67f },
+                                    progress = { progress },
                                     modifier = Modifier.size(60.dp),
                                     color = Color(0xFF6366F1),
                                     strokeWidth = 6.dp,
                                     trackColor = Color(0xFFE2E8F0)
                                 )
                                 Text(
-                                    text = "67%",
+                                    text = "${(progress * 100).toInt()}%",
                                     style = MaterialTheme.typography.bodyMedium.copy(
                                         fontWeight = FontWeight.Bold
                                     ),
@@ -235,10 +273,10 @@ fun LibraryScreen(
                         }
                     }
 
-                    // Search Bar
+                    // Search Bar - Local library search
                     OutlinedTextField(
-                        value = "",
-                        onValueChange = { },
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp, vertical = 16.dp),
@@ -257,13 +295,15 @@ fun LibraryScreen(
                             )
                         },
                         trailingIcon = {
-                            IconButton(onClick = { }) {
-                                Icon(
-                                    Icons.Default.MoreVert,
-                                    contentDescription = "Filter",
-                                    tint = Color(0xFF6366F1),
-                                    modifier = Modifier.size(20.dp)
-                                )
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(
+                                        Icons.Default.Clear,
+                                        contentDescription = "Clear search",
+                                        tint = Color(0xFF64748B),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                             }
                         },
                         shape = RoundedCornerShape(12.dp),
@@ -272,7 +312,8 @@ fun LibraryScreen(
                             focusedBorderColor = Color(0xFF6366F1),
                             unfocusedContainerColor = Color.White,
                             focusedContainerColor = Color.White
-                        )
+                        ),
+                        singleLine = true
                     )
 
                     // Category Pills
@@ -303,27 +344,126 @@ fun LibraryScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Your Library",
+                        text = "${if (searchQuery.isNotEmpty()) "Search Results" else "Your Library"}",
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold
                         ),
                         color = Color(0xFF1E293B)
                     )
                     Text(
-                        text = "${books.size} books",
+                        text = "${filteredBooks.size} books",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color(0xFF64748B)
                     )
                 }
             }
 
+            // Loading state
+            if (isLoading) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = Color(0xFF6366F1)
+                        )
+                    }
+                }
+            }
+
             // Books List
-            items(books) { book ->
+            items(filteredBooks) { book ->
                 ModernBookCard(
                     book = book,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
                     onEditClick = { onEditBookClick(book) }
                 )
+            }
+
+            // Empty state
+            if (!isLoading && filteredBooks.isEmpty()) {
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(40.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        if (searchQuery.isNotEmpty()) {
+                            // Search results empty
+                            Text(
+                                text = "No books found for \"$searchQuery\"",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Color(0xFF64748B)
+                            )
+                            Text(
+                                text = "Try a different search term",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color(0xFF94A3B8)
+                            )
+                        } else if (allBooks.isEmpty()) {
+                            // Library completely empty
+                            Text(
+                                text = "No books in your library yet",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Color(0xFF64748B)
+                            )
+                            Text(
+                                text = "Find books online to get started!",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color(0xFF94A3B8)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Button(
+                                    onClick = onSearchClick,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF6366F1)
+                                    )
+                                ) {
+                                    Icon(
+                                        Icons.Default.Search,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Find Books")
+                                }
+                                OutlinedButton(
+                                    onClick = onAddBookClick,
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = Color(0xFF6366F1)
+                                    )
+                                ) {
+                                    Icon(
+                                        Icons.Default.Add,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Add Manually")
+                                }
+                            }
+                        } else {
+                            // Category filter shows no results
+                            Text(
+                                text = "No $selectedCategory books",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Color(0xFF64748B)
+                            )
+                            Text(
+                                text = "Try selecting a different category",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color(0xFF94A3B8)
+                            )
+                        }
+                    }
+                }
             }
 
             // Bottom spacing for FAB
@@ -360,6 +500,7 @@ fun ModernCategoryPill(
         )
     }
 }
+
 @Composable
 fun ModernBookCard(
     book: Book,
@@ -382,7 +523,7 @@ fun ModernBookCard(
                     .padding(16.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                // Enhanced Book Cover
+                // Enhanced Book Cover - Now shows real covers!
                 Card(
                     modifier = Modifier
                         .width(60.dp)
@@ -390,14 +531,19 @@ fun ModernBookCard(
                     shape = RoundedCornerShape(8.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
-                    if (book.coverImageRes != null) {
-                        Image(
-                            painter = painterResource(id = book.coverImageRes),
-                            contentDescription = "Cover of ${book.title}",
+                    if (!book.coverImagePath.isNullOrEmpty()) {
+                        // Show real book cover from API
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(book.coverImagePath.replace("http:", "https:"))
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Book cover",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
                     } else {
+                        // Fallback gradient cover for manually added books
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -536,7 +682,7 @@ fun ModernBookCard(
                 }
             }
 
-            // Divider and Edit Button (moved outside the Row, inside the Column)
+            // Divider and Edit Button
             HorizontalDivider(
                 color = Color(0xFFE2E8F0),
                 thickness = 1.dp

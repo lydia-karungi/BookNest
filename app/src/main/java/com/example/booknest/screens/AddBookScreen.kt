@@ -25,6 +25,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
+import com.example.booknest.data.database.BookNestDatabase
+import com.example.booknest.data.entity.Book
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,6 +36,12 @@ fun AddBookScreen(
     onBackClick: () -> Unit = {},
     onSaveClick: (title: String, author: String, pages: String, category: String, rating: Float) -> Unit = { _, _, _, _, _ -> }
 ) {
+    // Get database instance
+    val context = LocalContext.current
+    val database = remember { BookNestDatabase.getDatabase(context) }
+    val bookDao = database.bookDao()
+    val scope = rememberCoroutineScope()
+
     var title by remember { mutableStateOf("") }
     var author by remember { mutableStateOf("") }
     var pages by remember { mutableStateOf("") }
@@ -348,7 +358,22 @@ fun AddBookScreen(
                 Button(
                     onClick = {
                         if (title.isNotBlank() && author.isNotBlank()) {
-                            onSaveClick(title, author, pages, category, rating)
+                            scope.launch {
+                                // Save to database
+                                bookDao.insertBook(
+                                    Book(
+                                        title = title,
+                                        author = author,
+                                        status = "Wishlist",
+                                        progress = 0f,
+                                        rating = rating,
+                                        category = category,
+                                        pageCount = pages.toIntOrNull() ?: 0
+                                    )
+                                )
+                                // Go back after saving
+                                onBackClick()
+                            }
                         }
                     },
                     modifier = Modifier.weight(1f),
