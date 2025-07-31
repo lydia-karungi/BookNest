@@ -22,11 +22,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import androidx.navigation.NavType
 import com.example.booknest.screens.AddBookScreen
 import com.example.booknest.screens.AddLogScreen
 import com.example.booknest.screens.GoalsScreen
 import com.example.booknest.screens.LibraryScreen
 import com.example.booknest.screens.BookSearchScreen
+import com.example.booknest.screens.PDFReadingScreen
 import com.example.booknest.data.entity.Book
 
 sealed class BottomNavItem(val route: String, val label: String, val icon: ImageVector) {
@@ -41,6 +44,7 @@ sealed class BottomNavItem(val route: String, val label: String, val icon: Image
 object Routes {
     const val EDIT_BOOK = "edit_book"
     const val QUOTE_LOG = "quoteLog"
+    const val READING = "reading" // NEW: Reading screen route
 }
 
 @Composable
@@ -70,6 +74,35 @@ fun MainNavigation() {
                     onSearchClick = {
                         // Navigate to Store tab for online book search
                         navController.navigate(BottomNavItem.Store.route)
+                    },
+                    onReadBookClick = { book ->
+                        // NEW: Navigate to reading screen
+                        navController.navigate("${Routes.READING}/${book.id}/${book.title}")
+                    }
+                )
+            }
+
+            // NEW: Reading Screen
+            composable(
+                route = "${Routes.READING}/{bookId}/{bookTitle}",
+                arguments = listOf(
+                    navArgument("bookId") { type = NavType.StringType },
+                    navArgument("bookTitle") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
+                val bookTitle = backStackEntry.arguments?.getString("bookTitle") ?: "Book"
+
+                PDFReadingScreen(
+                    bookId = bookId,
+                    bookTitle = bookTitle,
+                    pdfAssetPath = "sample.pdf", // For testing with sample PDF
+                    onBackClick = {
+                        navController.popBackStack() // Return to library
+                    },
+                    onProgressUpdate = { progress, currentPage, totalPages ->
+                        // TODO: Update book progress in database
+                        // You can integrate with your LibraryViewModel here
                     }
                 )
             }
