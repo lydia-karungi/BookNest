@@ -13,6 +13,12 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -379,7 +385,19 @@ fun LibraryScreen(
                 ModernBookCard(
                     book = book,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
-                    onEditClick = { onEditBookClick(book) }
+                    onEditClick = { onEditBookClick(book) },
+                    onProgressUpdate = { newProgress ->
+                        viewModel.updateBookProgress(book.id, newProgress)
+                    },
+                    onProgressUpdateByPages = { currentPage, totalPages ->
+                        viewModel.updateBookProgressByPages(book.id, currentPage, totalPages)
+                    },
+                    onStatusUpdate = { newStatus ->
+                        viewModel.updateBookStatus(book.id, newStatus)
+                    },
+                    onStartReading = {
+                        viewModel.startReadingSession(book.id)
+                    }
                 )
             }
 
@@ -505,8 +523,14 @@ fun ModernCategoryPill(
 fun ModernBookCard(
     book: Book,
     modifier: Modifier = Modifier,
-    onEditClick: () -> Unit = {}
+    onEditClick: () -> Unit = {},
+    onProgressUpdate: (Float) -> Unit = {},
+    onProgressUpdateByPages: (Int, Int) -> Unit = { _, _ -> },
+    onStatusUpdate: (String) -> Unit = {},
+    onStartReading: () -> Unit = {}
 ) {
+    var showProgressDialog by remember { mutableStateOf(false) }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -643,10 +667,10 @@ fun ModernBookCard(
                         }
                     }
 
-                    if (book.status == "Reading") {
+                    // Enhanced Progress Section - Show for Reading books OR any book with progress
+                    if (book.status == "Reading" || book.progress > 0f) {
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Progress Section
                         Column {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -657,62 +681,332 @@ fun ModernBookCard(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color(0xFF64748B)
                                 )
-                                Text(
-                                    text = "${(book.progress * 100).toInt()}%",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        fontWeight = FontWeight.Bold
-                                    ),
-                                    color = Color(0xFF1E293B)
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        text = "${(book.progress * 100).toInt()}%",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            fontWeight = FontWeight.Bold
+                                        ),
+                                        color = Color(0xFF1E293B)
+                                    )
+                                    if (book.pageCount > 0) {
+                                        Text(
+                                            text = "${book.currentPage}/${book.pageCount} pages",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color(0xFF94A3B8)
+                                        )
+                                    }
+                                }
+
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                LinearProgressIndicator(
+                                    progress = { book.progress },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(6.dp)
+                                        .clip(RoundedCornerShape(3.dp)),
+                                    color = Color(0xFF6366F1),
+                                    trackColor = Color(0xFFE2E8F0)
                                 )
                             }
-
-                            Spacer(modifier = Modifier.height(6.dp))
-
-                            LinearProgressIndicator(
-                                progress = { book.progress },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(6.dp)
-                                    .clip(RoundedCornerShape(3.dp)),
-                                color = Color(0xFF6366F1),
-                                trackColor = Color(0xFFE2E8F0)
-                            )
                         }
                     }
                 }
-            }
 
-            // Divider and Edit Button
-            HorizontalDivider(
-                color = Color(0xFFE2E8F0),
-                thickness = 1.dp
-            )
+                // Divider and Action Buttons
+                HorizontalDivider(
+                    color = Color(0xFFE2E8F0),
+                    thickness = 1.dp
+                )
 
-            // Edit Button
-            TextButton(
-                onClick = onEditClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = Color(0xFF6366F1)
-                )
-            ) {
-                Icon(
-                    Icons.Default.Edit,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    "Edit Book",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.Medium
-                    )
-                )
+                // Enhanced Action Buttons
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    when (book.status) {
+                        "Wishlist" -> {
+                            Button(
+                                onClick = {
+                                    onStatusUpdate("Reading")
+                                    onStartReading()
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF6366F1)
+                                ),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    Icons.Default.PlayArrow,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Start Reading")
+                            }
+                        }
+
+                        "Reading" -> {
+                            OutlinedButton(
+                                onClick = { showProgressDialog = true },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Update Progress")
+                            }
+
+                            Button(
+                                onClick = { onStatusUpdate("Finished") },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF10B981)
+                                ),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Finish")
+                            }
+                        }
+
+                        "Finished" -> {
+                            OutlinedButton(
+                                onClick = {
+                                    onStatusUpdate("Reading")
+                                    onStartReading()
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Read Again")
+                            }
+                        }
+                    }
+
+                    // Edit button (always available)
+                    OutlinedButton(
+                        onClick = onEditClick,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Edit")
+                    }
+                }
             }
         }
+
+        // Progress Update Dialog
+        if (showProgressDialog) {
+            ProgressUpdateDialog(
+                currentProgress = book.progress,
+                currentPage = book.currentPage,
+                totalPages = book.pageCount,
+                onProgressUpdate = { newProgress ->
+                    onProgressUpdate(newProgress)
+                    showProgressDialog = false
+                },
+                onProgressUpdateByPages = { currentPage, totalPages ->
+                    onProgressUpdateByPages(currentPage, totalPages)
+                    showProgressDialog = false
+                },
+                onDismiss = { showProgressDialog = false }
+            )
+        }
     }
+
+    @Composable
+    fun ProgressUpdateDialog(
+        currentProgress: Float,
+        currentPage: Int,
+        totalPages: Int,
+        onProgressUpdate: (Float) -> Unit,
+        onProgressUpdateByPages: (Int, Int) -> Unit,
+        onDismiss: () -> Unit
+    ) {
+        var progress by remember { mutableStateOf(currentProgress) }
+        var pageInput by remember { mutableStateOf(if (currentPage > 0) currentPage.toString() else "") }
+        var totalPagesInput by remember { mutableStateOf(if (totalPages > 0) totalPages.toString() else "") }
+
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("Update Reading Progress") },
+            text = {
+                Column {
+                    Text("Current progress: ${(currentProgress * 100).toInt()}%")
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Slider for percentage
+                    Text("Progress: ${(progress * 100).toInt()}%")
+                    Slider(
+                        value = progress,
+                        onValueChange = { progress = it },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Or input by pages
+                    Text("Or update by pages:")
+                    Row {
+                        OutlinedTextField(
+                            value = pageInput,
+                            onValueChange = { pageInput = it },
+                            label = { Text("Current Page") },
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        OutlinedTextField(
+                            value = totalPagesInput,
+                            onValueChange = { totalPagesInput = it },
+                            label = { Text("Total Pages") },
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                    }
+
+                    // Auto-calculate progress from pages
+                    LaunchedEffect(pageInput, totalPagesInput) {
+                        val currentPageInt = pageInput.toIntOrNull()
+                        val totalPagesInt = totalPagesInput.toIntOrNull()
+                        if (currentPageInt != null && totalPagesInt != null && totalPagesInt > 0) {
+                            progress = (currentPageInt.toFloat() / totalPagesInt).coerceIn(0f, 1f)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val currentPageInt = pageInput.toIntOrNull()
+                        val totalPagesInt = totalPagesInput.toIntOrNull()
+
+                        if (currentPageInt != null && totalPagesInt != null && totalPagesInt > 0) {
+                            onProgressUpdateByPages(currentPageInt, totalPagesInt)
+                        } else {
+                            onProgressUpdate(progress)
+                        }
+                    }
+                ) {
+                    Text("Update")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun ProgressUpdateDialog(
+    currentProgress: Float,
+    currentPage: Int,
+    totalPages: Int,
+    onProgressUpdate: (Float) -> Unit,
+    onProgressUpdateByPages: (Int, Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var progress by remember { mutableStateOf(currentProgress) }
+    var pageInput by remember { mutableStateOf(if (currentPage > 0) currentPage.toString() else "") }
+    var totalPagesInput by remember { mutableStateOf(if (totalPages > 0) totalPages.toString() else "") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Update Reading Progress") },
+        text = {
+            Column {
+                Text("Current progress: ${(currentProgress * 100).toInt()}%")
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Slider for percentage
+                Text("Progress: ${(progress * 100).toInt()}%")
+                Slider(
+                    value = progress,
+                    onValueChange = { progress = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Or input by pages
+                Text("Or update by pages:")
+                Row {
+                    OutlinedTextField(
+                        value = pageInput,
+                        onValueChange = { pageInput = it },
+                        label = { Text("Current Page") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    OutlinedTextField(
+                        value = totalPagesInput,
+                        onValueChange = { totalPagesInput = it },
+                        label = { Text("Total Pages") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                }
+
+                // Auto-calculate progress from pages
+                LaunchedEffect(pageInput, totalPagesInput) {
+                    val currentPageInt = pageInput.toIntOrNull()
+                    val totalPagesInt = totalPagesInput.toIntOrNull()
+                    if (currentPageInt != null && totalPagesInt != null && totalPagesInt > 0) {
+                        progress = (currentPageInt.toFloat() / totalPagesInt).coerceIn(0f, 1f)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val currentPageInt = pageInput.toIntOrNull()
+                    val totalPagesInt = totalPagesInput.toIntOrNull()
+
+                    if (currentPageInt != null && totalPagesInt != null && totalPagesInt > 0) {
+                        onProgressUpdateByPages(currentPageInt, totalPagesInt)
+                    } else {
+                        onProgressUpdate(progress)
+                    }
+                }
+            ) {
+                Text("Update")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Preview(showBackground = true)
