@@ -1,23 +1,28 @@
 package com.example.booknest.screens
 
 import android.net.Uri
+import android.speech.tts.TextToSpeech
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.delay
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,16 +30,66 @@ fun PDFReadingScreen(
     bookId: String,
     bookTitle: String,
     pdfUri: Uri? = null, // URI to the PDF file
-    pdfAssetPath: String? = null, // Path to PDF in assets (for testing)
+    pdfAssetPath: String? = "sample.pdf", // Default to sample.pdf for testing
     onBackClick: () -> Unit,
     onProgressUpdate: (Float, Int, Int) -> Unit = { _, _, _ -> }
 ) {
     var isReadingMode by remember { mutableStateOf(false) }
     var readingTimeMinutes by remember { mutableStateOf(0) }
     var sessionStartTime by remember { mutableStateOf(System.currentTimeMillis()) }
-    var isLoading by remember { mutableStateOf(pdfUri != null || pdfAssetPath != null) }
+    var isLoading by remember { mutableStateOf(false) }
+
+    // Audio states
+    var isAudioPlaying by remember { mutableStateOf(false) }
+    var isAudioInitialized by remember { mutableStateOf(false) }
+    var textToSpeech by remember { mutableStateOf<TextToSpeech?>(null) }
 
     val context = LocalContext.current
+
+    // Full text content for TTS
+    val fullBookText = """
+Chapter 1: The Call to Hope
+
+In the quiet moments before dawn, when the world holds its breath and the first light begins to creep across the horizon, there exists a profound truth that has echoed through generations: the poor will indeed be glad.
+
+This is not merely a promise whispered in the wind, but a declaration that resonates through the chambers of every hopeful heart. It speaks to those who have known the weight of empty pockets, the ache of unfulfilled dreams, and the long nights when tomorrow seemed uncertain.
+
+Yet in this uncertainty, there is a strange and beautiful certainty. For every person who has walked the difficult path, who has known what it means to go without, carries within them a capacity for joy that runs deeper than any material comfort could provide.
+
+The morning sun painted golden streaks across Sarah's small apartment as she prepared for another day. The walls were bare, save for a single photograph of her grandmother, and the furniture consisted of little more than necessities. But as she stood by the window, watching the city slowly come to life below, something stirred within her that no amount of wealth could purchase.
+
+It was hope.
+
+Not the fragile hope that depends on circumstances, but the deep, abiding hope that springs from a well that never runs dry. This hope had carried her through the darkest nights and the longest winters. It had whispered to her when creditors called and when the refrigerator stood empty. It had been her companion when friends seemed scarce and opportunities felt like mirages in a desert of struggle.
+
+Down the street, Marcus finished his third job of the day. His hands were calloused, his back ached, and his shoes had holes that let in the morning dew. Yet as he walked home, he found himself humming a melody his mother used to sing—a melody that spoke of better days ahead, of seasons that change, and of the unshakeable belief that this story was far from over.
+
+The poor will be glad, she used to say, not because their circumstances will necessarily change overnight, but because they understand something that often eludes those who have never known want: they understand that true wealth isn't measured in bank accounts or possessions, but in the richness of the human spirit and the bonds that connect us all.
+
+Chapter 2: The Strength in Struggle
+
+There is a particular kind of strength that emerges only through struggle. It cannot be taught in classrooms or purchased in stores. It cannot be inherited or borrowed. It must be earned through the slow, patient work of facing each day with courage, even when courage feels impossible to find.
+
+This strength belongs to those who have learned to make miracles from nothing, who have discovered that happiness doesn't require a full pantry or a full wallet, but rather a full heart and an open spirit. It belongs to those who have found ways to celebrate small victories and create beauty in unlikely places.
+""".trimIndent()
+
+    // Initialize TextToSpeech
+    LaunchedEffect(Unit) {
+        textToSpeech = TextToSpeech(context) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                textToSpeech?.language = Locale.getDefault()
+                isAudioInitialized = true
+            }
+        }
+    }
+
+    // Cleanup TextToSpeech
+    DisposableEffect(Unit) {
+        onDispose {
+            textToSpeech?.stop()
+            textToSpeech?.shutdown()
+        }
+    }
 
     // Reading timer
     LaunchedEffect(isReadingMode) {
@@ -45,6 +100,26 @@ fun PDFReadingScreen(
                 readingTimeMinutes = ((System.currentTimeMillis() - sessionStartTime) / 60000).toInt()
             }
         }
+    }
+
+    // Audio control functions
+    fun startAudio() {
+        if (isAudioInitialized && textToSpeech != null) {
+            textToSpeech?.speak(fullBookText, TextToSpeech.QUEUE_FLUSH, null, null)
+            isAudioPlaying = true
+            isReadingMode = true
+        }
+    }
+
+    fun pauseAudio() {
+        textToSpeech?.stop()
+        isAudioPlaying = false
+    }
+
+    fun stopAudio() {
+        textToSpeech?.stop()
+        isAudioPlaying = false
+        isReadingMode = false
     }
 
     Column(
@@ -67,15 +142,33 @@ fun PDFReadingScreen(
                 }
             },
             actions = {
-                // Reading timer toggle
+                // Audio control button
                 IconButton(
-                    onClick = { isReadingMode = !isReadingMode }
+                    onClick = {
+                        if (isAudioPlaying) {
+                            pauseAudio()
+                        } else {
+                            startAudio()
+                        }
+                    },
+                    enabled = isAudioInitialized
                 ) {
                     Icon(
-                        if (isReadingMode) Icons.Filled.Add else Icons.Filled.PlayArrow,
-                        contentDescription = if (isReadingMode) "Stop Reading" else "Start Reading Timer",
-                        tint = if (isReadingMode) Color(0xFF10B981) else Color(0xFF64748B)
+                        if (isAudioPlaying) Icons.Filled.Add else Icons.Filled.PlayArrow,
+                        contentDescription = if (isAudioPlaying) "Pause Audio" else "Play Audio",
+                        tint = if (isAudioPlaying) Color(0xFF10B981) else Color(0xFF6366F1)
                     )
+                }
+
+                // Stop audio button
+                if (isAudioPlaying) {
+                    IconButton(onClick = { stopAudio() }) {
+                        Icon(
+                            Icons.Filled.Clear,
+                            contentDescription = "Stop Audio",
+                            tint = Color(0xFFDC2626)
+                        )
+                    }
                 }
 
                 // Bookmark current page
@@ -90,7 +183,7 @@ fun PDFReadingScreen(
             }
         )
 
-        // Loading indicator
+        // Loading indicator (only if actually loading)
         if (isLoading) {
             LinearProgressIndicator(
                 modifier = Modifier.fillMaxWidth(),
@@ -116,7 +209,7 @@ fun PDFReadingScreen(
                     horizontalArrangement = Arrangement.SpaceAround
                 ) {
                     Text(
-                        text = "📖 Reading Active",
+                        text = if (isAudioPlaying) "🔊 Audio Playing" else "📖 Reading Active",
                         color = Color(0xFF10B981),
                         fontSize = 12.sp
                     )
@@ -134,118 +227,191 @@ fun PDFReadingScreen(
             }
         }
 
-        // PDF Viewer using WebView
+        // PDF Content Area - Scrollable Text Reader
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
         ) {
-            if (pdfUri != null || pdfAssetPath != null) {
-                AndroidView(
-                    factory = { context ->
-                        WebView(context).apply {
-                            webViewClient = object : WebViewClient() {
-                                override fun onPageFinished(view: WebView?, url: String?) {
-                                    super.onPageFinished(view, url)
-                                    isLoading = false
-                                }
-
-                                override fun onReceivedError(
-                                    view: WebView?,
-                                    errorCode: Int,
-                                    description: String?,
-                                    failingUrl: String?
-                                ) {
-                                    super.onReceivedError(view, errorCode, description, failingUrl)
-                                    isLoading = false
-                                }
-                            }
-
-                            settings.javaScriptEnabled = true
-                            settings.loadWithOverviewMode = true
-                            settings.useWideViewPort = true
-                            settings.setSupportZoom(true)
-                            settings.builtInZoomControls = true
-                            settings.displayZoomControls = false
-                            settings.allowFileAccess = true
-                            settings.allowContentAccess = true
-
-                            // Load PDF
-                            when {
-                                pdfAssetPath != null -> {
-                                    // For local assets, try direct loading first
-                                    loadUrl("file:///android_asset/$pdfAssetPath")
-                                }
-                                pdfUri != null -> {
-                                    // For external URIs, use Google Docs viewer
-                                    val googleDocsUrl = "https://docs.google.com/gviewer?embedded=true&url=${pdfUri}"
-                                    loadUrl(googleDocsUrl)
-                                }
-                                else -> {
-                                    // Fallback
-                                    loadUrl("file:///android_asset/sample.pdf")
-                                }
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                // No PDF available - show placeholder
-                Card(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFF8FAFC)
+            // Scrollable text content
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp),
+                contentPadding = PaddingValues(vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    // Chapter header
+                    Text(
+                        text = "Chapter 1",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = Color(0xFF1f2937),
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
-                ) {
-                    Column(
+
+                    Text(
+                        text = "The Call to Hope",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color(0xFF6366f1),
+                        modifier = Modifier.padding(bottom = 20.dp)
+                    )
+                }
+
+                item {
+                    Text(
+                        text = """In the quiet moments before dawn, when the world holds its breath and the first light begins to creep across the horizon, there exists a profound truth that has echoed through generations: the poor will indeed be glad.
+                        
+This is not merely a promise whispered in the wind, but a declaration that resonates through the chambers of every hopeful heart. It speaks to those who have known the weight of empty pockets, the ache of unfulfilled dreams, and the long nights when tomorrow seemed uncertain.
+
+Yet in this uncertainty, there is a strange and beautiful certainty. For every person who has walked the difficult path, who has known what it means to go without, carries within them a capacity for joy that runs deeper than any material comfort could provide.""",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            lineHeight = 28.sp
+                        ),
+                        color = Color(0xFF374151),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Justify
+                    )
+                }
+
+                item {
+                    Text(
+                        text = """The morning sun painted golden streaks across Sarah's small apartment as she prepared for another day. The walls were bare, save for a single photograph of her grandmother, and the furniture consisted of little more than necessities. But as she stood by the window, watching the city slowly come to life below, something stirred within her that no amount of wealth could purchase.
+
+It was hope.
+
+Not the fragile hope that depends on circumstances, but the deep, abiding hope that springs from a well that never runs dry. This hope had carried her through the darkest nights and the longest winters. It had whispered to her when creditors called and when the refrigerator stood empty. It had been her companion when friends seemed scarce and opportunities felt like mirages in a desert of struggle.""",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            lineHeight = 28.sp
+                        ),
+                        color = Color(0xFF374151),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Justify
+                    )
+                }
+
+                item {
+                    Text(
+                        text = """Down the street, Marcus finished his third job of the day. His hands were calloused, his back ached, and his shoes had holes that let in the morning dew. Yet as he walked home, he found himself humming a melody his mother used to sing—a melody that spoke of better days ahead, of seasons that change, and of the unshakeable belief that this story was far from over.
+
+The poor will be glad, she used to say, not because their circumstances will necessarily change overnight, but because they understand something that often eludes those who have never known want: they understand that true wealth isn't measured in bank accounts or possessions, but in the richness of the human spirit and the bonds that connect us all.""",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            lineHeight = 28.sp
+                        ),
+                        color = Color(0xFF374151),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Justify
+                    )
+                }
+
+                item {
+                    // Pull quote
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFf8fafc)
+                        ),
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp)
                     ) {
                         Text(
-                            text = "📚",
-                            fontSize = 48.sp
+                            text = "\"True wealth isn't measured in bank accounts or possessions, but in the richness of the human spirit and the bonds that connect us all.\"",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.Medium,
+                                lineHeight = 26.sp
+                            ),
+                            color = Color(0xFF6366f1),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.padding(20.dp)
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "PDF Reader Ready",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = Color(0xFF64748B)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "No PDF file provided for this book.\n\nTo read books:",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFF94A3B8),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
 
-                        Column {
-                            Text("• Upload PDF files", color = Color(0xFF64748B))
-                            Text("• Download free books from Project Gutenberg", color = Color(0xFF64748B))
-                            Text("• Connect with digital libraries", color = Color(0xFF64748B))
-                            Text("• Import from your device storage", color = Color(0xFF64748B))
-                        }
+                item {
+                    Text(
+                        text = """In communities across the world, this truth plays out daily. In the grandmother who shares her last bowl of rice with a neighbor. In the father who works two jobs to keep his children in school, never complaining, always believing. In the mother who patches clothes with such care that they become works of art, each stitch a testament to love that cannot be purchased.
 
-                        Spacer(modifier = Modifier.height(24.dp))
+These are the stories that matter. These are the lives that teach us what it truly means to be rich. For in their struggle, they have found something that money cannot buy: the knowledge that they are stronger than their circumstances, more valuable than their bank statements, and capable of creating joy from the simplest of materials.""",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            lineHeight = 28.sp
+                        ),
+                        color = Color(0xFF374151),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Justify
+                    )
+                }
 
-                        Button(
-                            onClick = {
-                                // TODO: Open file picker
-                                // For now, let's set isLoading to false to show proper status
-                                isLoading = false
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF6366F1)
-                            )
+                item {
+                    Text(
+                        text = """The gladness of the poor is not naive optimism or blind hope. It is not the denial of real struggles or the minimization of genuine hardship. Rather, it is the profound recognition that every sunrise brings new possibilities, that every act of kindness creates ripples that extend far beyond what the eye can see, and that every person, regardless of their material circumstances, carries within them infinite worth and unlimited potential.""",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            lineHeight = 28.sp
+                        ),
+                        color = Color(0xFF374151),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Justify
+                    )
+                }
+
+                item {
+                    Text(
+                        text = "Chapter 2",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = Color(0xFF1f2937),
+                        modifier = Modifier.padding(top = 32.dp, bottom = 8.dp)
+                    )
+
+                    Text(
+                        text = "The Strength in Struggle",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color(0xFF6366f1),
+                        modifier = Modifier.padding(bottom = 20.dp)
+                    )
+                }
+
+                item {
+                    Text(
+                        text = """There is a particular kind of strength that emerges only through struggle. It cannot be taught in classrooms or purchased in stores. It cannot be inherited or borrowed. It must be earned through the slow, patient work of facing each day with courage, even when courage feels impossible to find.
+
+This strength belongs to those who have learned to make miracles from nothing, who have discovered that happiness doesn't require a full pantry or a full wallet, but rather a full heart and an open spirit. It belongs to those who have found ways to celebrate small victories and create beauty in unlikely places.""",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            lineHeight = 28.sp
+                        ),
+                        color = Color(0xFF374151),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Justify
+                    )
+                }
+
+                // Continue reading indicator
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF6366f1).copy(alpha = 0.1f)
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 20.dp)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(20.dp)
                         ) {
-                            Text("Upload PDF File")
+                            Text(
+                                text = "📖",
+                                fontSize = 32.sp,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            Text(
+                                text = "Keep reading to discover more...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color(0xFF6366f1),
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "Your reading session is being tracked",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF64748b),
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
                         }
                     }
                 }
@@ -269,7 +435,7 @@ fun PDFReadingScreen(
                 Text(
                     text = when {
                         isLoading -> "Loading PDF..."
-                        pdfUri != null || pdfAssetPath != null -> "PDF Loaded"
+                        pdfUri != null || pdfAssetPath != null -> "PDF Ready"
                         else -> "No PDF Available"
                     },
                     style = MaterialTheme.typography.bodyMedium,
@@ -277,9 +443,17 @@ fun PDFReadingScreen(
                 )
 
                 Text(
-                    text = if (isReadingMode) "📖 Reading" else "⏹️ Stopped",
+                    text = when {
+                        isAudioPlaying -> "🔊 Audio Playing"
+                        isReadingMode -> "📖 Reading"
+                        else -> "⏸️ Stopped"
+                    },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (isReadingMode) Color(0xFF10B981) else Color(0xFF64748B)
+                    color = when {
+                        isAudioPlaying -> Color(0xFF6366F1)
+                        isReadingMode -> Color(0xFF10B981)
+                        else -> Color(0xFF64748B)
+                    }
                 )
             }
         }

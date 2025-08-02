@@ -42,6 +42,7 @@ import com.example.booknest.data.repository.BookRepository
 import com.example.booknest.data.network.NetworkModule
 import com.example.booknest.viewmodel.LibraryViewModel
 import com.example.booknest.viewmodel.ViewModelFactory
+import androidx.compose.foundation.BorderStroke
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -138,14 +139,38 @@ fun LibraryScreen(
                                 color = Color(0xFF64748B),
                                 fontSize = 16.sp
                             )
-                            Text(
-                                text = "BookNest",
-                                style = MaterialTheme.typography.headlineLarge.copy(
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 28.sp
-                                ),
-                                color = Color(0xFF1E293B)
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .background(
+                                            Brush.linearGradient(
+                                                colors = listOf(
+                                                    Color(0xFF6366F1),
+                                                    Color(0xFF8B5CF6)
+                                                )
+                                            ),
+                                            CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.Star, // or any book-related icon
+                                        contentDescription = "BookNest",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "BookNest",
+                                    style = MaterialTheme.typography.headlineLarge.copy(
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 28.sp
+                                    ),
+                                    color = Color(0xFF1E293B)
+                                )
+                            }
                         }
 
                         Row(
@@ -714,98 +739,190 @@ fun ModernBookCard(
             )
 
             // Action Buttons
-            Row(
+            // Action Buttons - Improved Design
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 when (book.status) {
                     "Wishlist" -> {
+                        // Single full-width button for wishlist
                         Button(
                             onClick = {
                                 onStatusUpdate("Reading")
                                 onStartReading()
-                                // Navigate to reading screen
                                 onReadBook()
                             },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF6366F1)
                             ),
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(
                                 Icons.Default.PlayArrow,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Start Reading")
+                            Text(
+                                "Start Reading",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
                         }
-                    }
 
-                    "Reading" -> {
+                        // Edit button below
                         OutlinedButton(
-                            onClick = { showProgressDialog = true },
-                            modifier = Modifier.weight(1f)
+                            onClick = onEditClick,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(44.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(0xFF64748B)
+                            ),
+                            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                         ) {
                             Icon(
                                 Icons.Default.Edit,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Update Progress")
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Edit Details")
                         }
+                    }
 
+                    "Reading" -> {
+                        // Primary action - Resume reading
                         Button(
                             onClick = { onReadBook() },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF10B981)
                             ),
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(
-                                Icons.Default.Check,
+                                Icons.Default.PlayArrow,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(18.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Finish")
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Continue Reading",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                        }
+
+                        // Secondary actions row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { showProgressDialog = true },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(44.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color(0xFF6366F1)
+                                ),
+                                border = BorderStroke(1.dp, Color(0xFF6366F1).copy(alpha = 0.3f))
+                            ) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Update")
+                            }
+
+                            OutlinedButton(
+                                onClick = onEditClick,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(44.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color(0xFF64748B)
+                                ),
+                                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                            ) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Edit")
+                            }
                         }
                     }
+
                     "Finished" -> {
-                        OutlinedButton(
+                        // Primary action - Resume/Read again
+                        Button(
                             onClick = {
                                 onStatusUpdate("Reading")
                                 onStartReading()
                                 onReadBook()
                             },
-                            modifier = Modifier.weight(1f)
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF6366F1)
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(
                                 Icons.Default.Refresh,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Read Again")
+                            Text(
+                                "Read Again",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                        }
+
+                        // Edit button below
+                        OutlinedButton(
+                            onClick = onEditClick,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(44.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(0xFF64748B)
+                            ),
+                            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Edit Details")
                         }
                     }
-                }
-
-                // Edit button (always available)
-                OutlinedButton(
-                    onClick = onEditClick,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(
-                        Icons.Default.Edit,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Edit")
                 }
             }
         }
