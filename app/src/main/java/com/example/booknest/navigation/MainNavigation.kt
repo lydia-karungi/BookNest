@@ -1,13 +1,10 @@
-// Replace the import section at the top of your MainNavigation.kt with this:
-
 package com.example.booknest.navigation
+
 import android.widget.Toast
 import android.content.Context
 import android.content.Intent
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -22,12 +19,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -43,13 +42,18 @@ import com.example.booknest.screens.GoalsScreen
 import com.example.booknest.screens.LibraryScreen
 import com.example.booknest.screens.BookSearchScreen
 import com.example.booknest.screens.PDFReadingScreen
+import com.example.booknest.screens.LoginScreen
+import com.example.booknest.screens.SignUpScreen
+import com.example.booknest.screens.AccountScreen
+import com.example.booknest.screens.ReadingLog
+import com.example.booknest.screens.LogType
 import com.example.booknest.data.entity.Book
 import com.example.booknest.data.database.BookNestDatabase
 import com.example.booknest.data.repository.BookRepository
 import com.example.booknest.data.network.NetworkModule
-import com.example.booknest.screens.shareReadingLog
 import com.example.booknest.viewmodel.LibraryViewModel
 import com.example.booknest.viewmodel.ViewModelFactory
+import com.example.booknest.screens.StatsScreen
 
 sealed class BottomNavItem(val route: String, val label: String, val icon: ImageVector) {
     object Library : BottomNavItem("library", "Library", Icons.Filled.Home)
@@ -61,14 +65,21 @@ sealed class BottomNavItem(val route: String, val label: String, val icon: Image
 
 // Additional routes that aren't in bottom navigation
 object Routes {
+    const val LOGIN = "login"
+    const val SIGNUP = "signup"
+    const val ACCOUNT = "account"
     const val EDIT_BOOK = "edit_book"
     const val QUOTE_LOG = "quoteLog"
+    const val EDIT_LOG = "edit_log"
     const val READING = "reading"
 }
 
 @Composable
 fun MainNavigation() {
     val navController = rememberNavController()
+
+    // Authentication state - in real app, use a proper authentication manager
+    var isLoggedIn by remember { mutableStateOf(false) }
 
     // Create shared ViewModel for book operations
     val context = LocalContext.current
@@ -80,16 +91,72 @@ fun MainNavigation() {
         factory = ViewModelFactory(repository)
     )
 
+    // Determine start destination based on authentication state
+    val startDestination = if (isLoggedIn) BottomNavItem.Library.route else Routes.LOGIN
+
     Scaffold(
         bottomBar = {
-            BottomNavigationBar(navController = navController)
+            // Only show bottom navigation if user is logged in
+            if (isLoggedIn) {
+                BottomNavigationBar(navController = navController)
+            }
         }
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = BottomNavItem.Library.route,
-            modifier = Modifier.padding(innerPadding)
+            startDestination = startDestination,
+            modifier = Modifier.padding(if (isLoggedIn) innerPadding else PaddingValues(0.dp))
         ) {
+            // Authentication Routes
+            composable(Routes.LOGIN) {
+                LoginScreen(
+                    onLoginSuccess = {
+                        isLoggedIn = true
+                        navController.navigate(BottomNavItem.Library.route) {
+                            // Clear login screen from back stack
+                            popUpTo(Routes.LOGIN) { inclusive = true }
+                        }
+                    },
+                    onNavigateToSignUp = {
+                        navController.navigate(Routes.SIGNUP)
+                    }
+                )
+            }
+
+            composable(Routes.SIGNUP) {
+                SignUpScreen(
+                    onSignUpSuccess = {
+                        isLoggedIn = true
+                        navController.navigate(BottomNavItem.Library.route) {
+                            // Clear authentication screens from back stack
+                            popUpTo(Routes.LOGIN) { inclusive = true }
+                        }
+                    },
+                    onNavigateToLogin = {
+                        navController.popBackStack()
+                    },
+                    onBackClick = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            composable(Routes.ACCOUNT) {
+                AccountScreen(
+                    onBackClick = {
+                        navController.popBackStack()
+                    },
+                    onLogout = {
+                        isLoggedIn = false
+                        navController.navigate(Routes.LOGIN) {
+                            // Clear all screens from back stack
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            // Main App Routes (only accessible when logged in)
             composable(BottomNavItem.Library.route) {
                 LibraryScreen(
                     onAddBookClick = {
@@ -107,6 +174,9 @@ fun MainNavigation() {
                     onReadBookClick = { book ->
                         // Navigate to reading screen
                         navController.navigate("${Routes.READING}/${book.id}/${book.title}")
+                    },
+                    onAccountClick = {  // Add this new parameter
+                        navController.navigate(Routes.ACCOUNT)
                     }
                 )
             }
@@ -135,8 +205,6 @@ fun MainNavigation() {
                     }
                 )
             }
-
-// Replace your GoalsScreen composable in MainNavigation.kt with this:
 
             composable(BottomNavItem.Goals.route) {
                 // Add these for the working functionality
@@ -190,9 +258,6 @@ fun MainNavigation() {
                 }
             }
 
-
-            // Replace your Routes.QUOTE_LOG composable with this fixed version:
-
             composable(Routes.QUOTE_LOG) {
                 // Create the coroutine scope at the composable level
                 val scope = rememberCoroutineScope()
@@ -237,9 +302,11 @@ fun MainNavigation() {
             }
 
             composable(BottomNavItem.Stats.route) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Stats Coming Soon", style = MaterialTheme.typography.headlineMedium)
-                }
+                StatsScreen(
+                    onBackClick = {
+                        navController.popBackStack()
+                    }
+                )
             }
 
             composable(BottomNavItem.Store.route) {
@@ -279,6 +346,25 @@ fun MainNavigation() {
             }
         }
     }
+}
+
+// Share functionality
+fun shareReadingLog(context: Context, log: ReadingLog) {
+    val shareText = when (log.logType) {
+        LogType.QUOTE -> "\"${log.note}\"\n\n- ${log.bookTitle} by ${log.author}\n\nShared from BookNest 📚"
+        LogType.REVIEW -> "📚 ${log.bookTitle} by ${log.author}\n\n⭐ ${log.rating}/5\n\n${log.note}\n\nShared from BookNest"
+        LogType.THOUGHT -> "💭 My thoughts on ${log.bookTitle}:\n\n${log.note}\n\nShared from BookNest 📚"
+        LogType.PROGRESS -> "📊 Reading ${log.bookTitle}:\n\n${log.note}\n\nShared from BookNest 📚"
+    }
+
+    val shareIntent = Intent().apply {
+        action = Intent.ACTION_SEND
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, shareText)
+        putExtra(Intent.EXTRA_SUBJECT, "Check out: ${log.bookTitle}")
+    }
+
+    context.startActivity(Intent.createChooser(shareIntent, "Share reading log"))
 }
 
 @Composable

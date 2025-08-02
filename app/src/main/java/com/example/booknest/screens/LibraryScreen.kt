@@ -50,7 +50,8 @@ fun LibraryScreen(
     onAddBookClick: () -> Unit = {},
     onEditBookClick: (Book) -> Unit = {},
     onSearchClick: () -> Unit = {},
-    onReadBookClick: (Book) -> Unit = {}
+    onReadBookClick: (Book) -> Unit = {},
+    onAccountClick: () -> Unit = {}
 ) {
     // Get database instance and create repository
     val context = LocalContext.current
@@ -212,27 +213,33 @@ fun LibraryScreen(
                                 }
                             }
 
-                            // Profile Avatar with gradient - simplified
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .background(
-                                        Brush.linearGradient(
-                                            colors = listOf(
-                                                Color(0xFF6366F1),
-                                                Color(0xFF8B5CF6)
+                            // Profile Avatar with gradient - NOW CLICKABLE
+                            Surface(
+                                onClick = onAccountClick,  // Added click handler here
+                                modifier = Modifier.size(44.dp),
+                                shape = CircleShape,
+                                shadowElevation = 2.dp
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            Brush.linearGradient(
+                                                colors = listOf(
+                                                    Color(0xFF6366F1),
+                                                    Color(0xFF8B5CF6)
+                                                )
                                             )
                                         ),
-                                        CircleShape
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "BN",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
-                                )
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "BN",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp
+                                    )
+                                }
                             }
                         }
                     }
@@ -411,19 +418,17 @@ fun LibraryScreen(
                     book = book,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
                     onEditClick = { onEditBookClick(book) },
-                    // In your ModernBookCard function, replace these lines:
-
                     onProgressUpdate = { newProgress ->
-                        viewModel.updateBookProgress(book.id, newProgress)  // Remove .toInt()
+                        viewModel.updateBookProgress(book.id, newProgress)
                     },
                     onProgressUpdateByPages = { currentPage, totalPages ->
-                        viewModel.updateBookProgressByPages(book.id, currentPage, totalPages)  // Remove .toInt()
+                        viewModel.updateBookProgressByPages(book.id, currentPage, totalPages)
                     },
                     onStatusUpdate = { newStatus ->
-                        viewModel.updateBookStatus(book.id, newStatus)  // Remove .toInt()
+                        viewModel.updateBookStatus(book.id, newStatus)
                     },
                     onStartReading = {
-                        viewModel.startReadingSession(book.id)  // Remove .toInt()
+                        viewModel.startReadingSession(book.id)
                     },
                     onReadBook = { onReadBookClick(book) }
                 )
@@ -557,7 +562,6 @@ fun ModernBookCard(
     onStatusUpdate: (String) -> Unit = {},
     onStartReading: () -> Unit = {},
     onReadBook: () -> Unit = {}
-
 ) {
     var showProgressDialog by remember { mutableStateOf(false) }
 
@@ -740,7 +744,6 @@ fun ModernBookCard(
                 thickness = 1.dp
             )
 
-            // Action Buttons
             // Action Buttons - Improved Design
             Column(
                 modifier = Modifier
