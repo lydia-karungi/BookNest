@@ -411,17 +411,19 @@ fun LibraryScreen(
                     book = book,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
                     onEditClick = { onEditBookClick(book) },
+                    // In your ModernBookCard function, replace these lines:
+
                     onProgressUpdate = { newProgress ->
-                        viewModel.updateBookProgress(book.id, newProgress)
+                        viewModel.updateBookProgress(book.id, newProgress)  // Remove .toInt()
                     },
                     onProgressUpdateByPages = { currentPage, totalPages ->
-                        viewModel.updateBookProgressByPages(book.id, currentPage, totalPages)
+                        viewModel.updateBookProgressByPages(book.id, currentPage, totalPages)  // Remove .toInt()
                     },
                     onStatusUpdate = { newStatus ->
-                        viewModel.updateBookStatus(book.id, newStatus)
+                        viewModel.updateBookStatus(book.id, newStatus)  // Remove .toInt()
                     },
                     onStartReading = {
-                        viewModel.startReadingSession(book.id)
+                        viewModel.startReadingSession(book.id)  // Remove .toInt()
                     },
                     onReadBook = { onReadBookClick(book) }
                 )

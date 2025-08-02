@@ -2,17 +2,33 @@ package com.example.booknest.data.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import java.util.UUID
+import androidx.room.ForeignKey
+import androidx.room.Index
 
-@Entity(tableName = "reading_logs")
+@Entity(
+    tableName = "reading_logs",
+    foreignKeys = [
+        ForeignKey(
+            entity = Book::class,
+            parentColumns = ["id"],
+            childColumns = ["bookId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index(value = ["bookId"])]
+)
 data class ReadingLog(
     @PrimaryKey
-    val id: String = UUID.randomUUID().toString(),
+    val id: String = "",
     val bookId: String,
     val bookTitle: String,
     val author: String,
-    val logText: String,
+    val note: String, // Your existing field name
     val logType: String, // "Thought", "Review", "Quote", "Progress"
     val rating: Float = 0f,
-    val date: Long = System.currentTimeMillis()
+    val date: String, // Your existing field name
+    val isPublic: Boolean = true,
+    val likes: Int = 0,
+    val comments: Int = 0,
+    val isLikedByUser: Boolean = false
 )

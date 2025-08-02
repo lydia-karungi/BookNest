@@ -19,6 +19,10 @@ class LibraryViewModel(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    // NEW: Book editing state management
+    private val _bookToEdit = MutableStateFlow<Book?>(null)
+    val bookToEdit: StateFlow<Book?> = _bookToEdit.asStateFlow()
+
     init {
         loadBooks()
     }
@@ -49,7 +53,16 @@ class LibraryViewModel(
         }
     }
 
-    // NEW: Reading tracking methods
+    // NEW: Book editing methods
+    fun setBookToEdit(book: Book) {
+        _bookToEdit.value = book
+    }
+
+    fun clearBookToEdit() {
+        _bookToEdit.value = null
+    }
+
+    // UPDATED: Reading tracking methods with String book IDs
 
     fun updateBookProgress(bookId: String, newProgress: Float) {
         viewModelScope.launch {
