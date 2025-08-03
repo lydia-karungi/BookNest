@@ -78,5 +78,6 @@ dependencies {
 
     // Image loading for book covers
     implementation("io.coil-kt:coil-compose:2.5.0")
+    testImplementation("junit:junit:4.13.2")
 
 }
